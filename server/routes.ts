@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { isAuthenticated } from "./auth";
 import { insertAppointmentSchema, insertChatMessageSchema, insertTestimonialSchema, upsertUserSchema, updateAppointmentSchema } from "@shared/schema";
 import { z } from "zod";
 import * as jwt from "jsonwebtoken";
@@ -26,8 +26,7 @@ function getWebSocketSecret(): string {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
+ 
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
