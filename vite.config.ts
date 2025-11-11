@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { fileURLToPath } from "url";
 import path from "path"
 
 export default defineConfig({
@@ -9,19 +10,30 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      "@": path.resolve(import.meta.dirname, "client", "src"),
-      "@shared": path.resolve(import.meta.dirname, "shared"),
-      "@assets": path.resolve(import.meta.dirname, "attached_assets"),
+      "@": path.resolve(path.dirname(fileURLToPath(import.meta.url)), "client", "src"),
+      "@shared": path.resolve(path.dirname(fileURLToPath(import.meta.url)), "shared"),
+      "@assets": path.resolve(path.dirname(fileURLToPath(import.meta.url)), "attached_assets"),
     },
   },
-  root: path.resolve(import.meta.dirname, "client"),
+  root: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "client"),
   build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    outDir: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "dist", "public"),
     emptyOutDir: true,
   },
   server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5173',
+        changeOrigin: true,
+      },
+      '/socket.io': {
+        target: 'ws://localhost:5173',
+        ws: true,
+      },
+    },
     fs: {
-      strict: true,
+      strict: false,
       deny: ["**/.*"],
     },
   },

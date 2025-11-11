@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { User, Mail, Phone, Calendar, Edit, Save } from "lucide-react";
+import { User, Mail, Phone, Calendar, CreditCard as Edit, Save, Settings, Chrome as Home, ArrowRight, LogOut } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { Link } from "wouter";
 
 export default function Profile() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -113,22 +114,31 @@ export default function Profile() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
       <Navigation />
       
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2" data-testid="text-profile-title">Mi Perfil</h1>
-          <p className="text-muted-foreground">Gestiona tu información personal y preferencias</p>
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center shadow-lg">
+              <User className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-1" data-testid="text-profile-title">Mi Perfil</h1>
+              <p className="text-gray-600">Gestiona tu información personal y preferencias</p>
+            </div>
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Profile Card */}
           <div className="lg:col-span-2">
-            <Card data-testid="card-profile-info">
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300" data-testid="card-profile-info">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center space-x-2">
-                  <User className="w-5 h-5" />
+                  <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
+                    <User className="w-4 h-4 text-white" />
+                  </div>
                   <span>Información Personal</span>
                 </CardTitle>
                 <Button
@@ -137,46 +147,51 @@ export default function Profile() {
                   onClick={() => isEditing ? handleSave() : setIsEditing(true)}
                   disabled={updateProfileMutation.isPending}
                   data-testid="button-edit-profile"
+                  className={`transition-all duration-300 ${
+                    isEditing 
+                      ? 'bg-gradient-to-r from-primary to-accent text-white hover:from-primary/90 hover:to-accent/90 shadow-lg' 
+                      : 'hover:bg-primary/5 hover:border-primary/30 hover:text-primary'
+                  }`}
                 >
                   {isEditing ? (
                     <>
-                      <Save className="w-4 h-4 mr-2" />
+                      <Save className="w-4 h-4 mr-2 animate-pulse" />
                       {updateProfileMutation.isPending ? "Guardando..." : "Guardar"}
                     </>
                   ) : (
                     <>
-                      <Edit className="w-4 h-4 mr-2" />
+                      <Edit className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
                       Editar
                     </>
                   )}
                 </Button>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center space-x-6 pb-6 border-b">
+                <div className="flex items-center space-x-6 pb-6 border-b border-gray-200">
                   <div className="relative">
                     {user.profileImageUrl ? (
                       <img 
                         src={user.profileImageUrl}
                         alt={user.firstName || "Usuario"}
-                        className="w-24 h-24 rounded-full object-cover"
+                        className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg hover:scale-105 transition-transform duration-300"
                         data-testid="img-profile-picture"
                       />
                     ) : (
-                      <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center">
-                        <span className="text-primary font-bold text-2xl" data-testid="text-profile-initials">
+                      <div className="w-24 h-24 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform duration-300">
+                        <span className="text-white font-bold text-2xl" data-testid="text-profile-initials">
                           {(user.firstName?.[0] || '') + (user.lastName?.[0] || '')}
                         </span>
                       </div>
                     )}
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold text-foreground" data-testid="text-full-name">
+                    <h3 className="text-xl font-semibold text-gray-900" data-testid="text-full-name">
                       {user.firstName} {user.lastName}
                     </h3>
-                    <p className="text-muted-foreground" data-testid="text-user-type">
+                    <p className="text-gray-600" data-testid="text-user-type">
                       {user.role === 'psychologist' ? 'Psicólogo Profesional' : 'Paciente'}
                     </p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-gray-500">
                       Miembro desde {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
                     </p>
                   </div>
@@ -184,7 +199,7 @@ export default function Profile() {
 
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <Label htmlFor="firstName">Nombre</Label>
+                    <Label htmlFor="firstName" className="text-gray-700 font-medium">Nombre</Label>
                     <Input
                       id="firstName"
                       name="firstName"
@@ -192,10 +207,11 @@ export default function Profile() {
                       onChange={handleInputChange}
                       disabled={!isEditing}
                       data-testid="input-first-name"
+                      className="border-gray-200 focus:border-primary focus:ring-primary/20 disabled:bg-gray-50"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="lastName">Apellido</Label>
+                    <Label htmlFor="lastName" className="text-gray-700 font-medium">Apellido</Label>
                     <Input
                       id="lastName"
                       name="lastName"
@@ -203,12 +219,13 @@ export default function Profile() {
                       onChange={handleInputChange}
                       disabled={!isEditing}
                       data-testid="input-last-name"
+                      className="border-gray-200 focus:border-primary focus:ring-primary/20 disabled:bg-gray-50"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email" className="text-gray-700 font-medium">Email</Label>
                   <Input
                     id="email"
                     name="email"
@@ -217,12 +234,13 @@ export default function Profile() {
                     onChange={handleInputChange}
                     disabled={!isEditing}
                     data-testid="input-email"
+                    className="border-gray-200 focus:border-primary focus:ring-primary/20 disabled:bg-gray-50"
                   />
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <Label htmlFor="phone">Teléfono</Label>
+                    <Label htmlFor="phone" className="text-gray-700 font-medium">Teléfono</Label>
                     <Input
                       id="phone"
                       name="phone"
@@ -231,10 +249,11 @@ export default function Profile() {
                       onChange={handleInputChange}
                       disabled={!isEditing}
                       data-testid="input-phone"
+                      className="border-gray-200 focus:border-primary focus:ring-primary/20 disabled:bg-gray-50"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="dateOfBirth">Fecha de Nacimiento</Label>
+                    <Label htmlFor="dateOfBirth" className="text-gray-700 font-medium">Fecha de Nacimiento</Label>
                     <Input
                       id="dateOfBirth"
                       name="dateOfBirth"
@@ -243,6 +262,7 @@ export default function Profile() {
                       onChange={handleInputChange}
                       disabled={!isEditing}
                       data-testid="input-date-of-birth"
+                      className="border-gray-200 focus:border-primary focus:ring-primary/20 disabled:bg-gray-50"
                     />
                   </div>
                 </div>
@@ -252,9 +272,14 @@ export default function Profile() {
 
           {/* Personal Notes Card */}
           <div>
-            <Card data-testid="card-personal-notes">
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-primary/5 hover:shadow-xl transition-all duration-300" data-testid="card-personal-notes">
               <CardHeader>
-                <CardTitle>Notas Personales</CardTitle>
+                <CardTitle className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-gradient-to-br from-accent to-primary rounded-lg flex items-center justify-center">
+                    <Edit className="w-4 h-4 text-white" />
+                  </div>
+                  <span>Notas Personales</span>
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <Textarea
@@ -265,29 +290,35 @@ export default function Profile() {
                   onChange={handleInputChange}
                   disabled={!isEditing}
                   data-testid="textarea-personal-notes"
+                  className="border-gray-200 focus:border-primary focus:ring-primary/20 disabled:bg-gray-50 resize-none"
                 />
               </CardContent>
             </Card>
 
             {/* Account Info */}
-            <Card className="mt-6" data-testid="card-account-info">
+            <Card className="mt-6 shadow-lg border-0 bg-gradient-to-br from-white to-accent/5 hover:shadow-xl transition-all duration-300" data-testid="card-account-info">
               <CardHeader>
-                <CardTitle>Información de Cuenta</CardTitle>
+                <CardTitle className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
+                    <Settings className="w-4 h-4 text-white" />
+                  </div>
+                  <span>Información de Cuenta</span>
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center space-x-3 text-sm">
-                  <Mail className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Email verificado</span>
+                <div className="flex items-center space-x-3 text-sm p-3 bg-green-50 rounded-lg border border-green-200">
+                  <Mail className="w-4 h-4 text-green-600" />
+                  <span className="text-green-700 font-medium">Email verificado</span>
                 </div>
-                <div className="flex items-center space-x-3 text-sm">
-                  <Calendar className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">
+                <div className="flex items-center space-x-3 text-sm p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  <span className="text-blue-700">
                     Registro: {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
                   </span>
                 </div>
-                <div className="flex items-center space-x-3 text-sm">
-                  <User className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">
+                <div className="flex items-center space-x-3 text-sm p-3 bg-purple-50 rounded-lg border border-purple-200">
+                  <User className="w-4 h-4 text-purple-600" />
+                  <span className="text-purple-700">
                     Tipo: {user.role === 'psychologist' ? 'Profesional' : 'Paciente'}
                   </span>
                 </div>
@@ -295,26 +326,34 @@ export default function Profile() {
             </Card>
 
             {/* Quick Actions */}
-            <Card className="mt-6" data-testid="card-quick-actions">
+            <Card className="mt-6 shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 hover:shadow-xl transition-all duration-300" data-testid="card-quick-actions">
               <CardHeader>
-                <CardTitle>Acciones</CardTitle>
+                <CardTitle className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-gradient-to-br from-gray-600 to-gray-700 rounded-lg flex items-center justify-center">
+                    <Settings className="w-4 h-4 text-white" />
+                  </div>
+                  <span>Acciones</span>
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => window.location.href = "/"}
-                  data-testid="button-back-home"
-                >
-                  Volver al Inicio
-                </Button>
+                <Link href="/">
+                  <Button 
+                    variant="outline" 
+                    className="w-full hover:bg-primary/5 hover:border-primary/30 hover:text-primary transition-all duration-300 group"
+                    data-testid="button-back-home"
+                  >
+                    <Home className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+                    Volver al Inicio
+                    <ArrowRight className="w-4 h-4 ml-auto group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </Link>
                 <Button 
                   variant="destructive" 
-                  className="w-full"
+                  className="w-full hover:bg-red-600 transition-all duration-300 group"
                   onClick={() => window.location.href = "/api/logout"}
                   data-testid="button-logout"
                 >
-                  Cerrar Sesión
+                  <LogOut className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
                 </Button>
               </CardContent>
             </Card>

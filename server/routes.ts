@@ -18,8 +18,7 @@ function getWebSocketSecret(): string {
   
   // In development, allow fallback but warn
   if (!wsSecret) {
-    console.warn('WARNING: Using development WebSocket JWT secret. Configure WS_JWT_SECRET for production.');
-    return 'development-ws-secret-key-change-in-production';
+    throw new Error('WS_JWT_SECRET environment variable must be set');
   }
   
   return wsSecret;

@@ -3,42 +3,33 @@ import path from "path";
 import { fileURLToPath } from "url";
 import cors from "cors";
 import dotenv from "dotenv";
+import { registerRoutes } from "./routes.js";
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5173;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// ====================
-// Middlewares
-// ====================
-app.use(cors());
+app.use(cors({
+  origin: "*",
+  credentials: true
+}));
 app.use(express.json());
 
-// ====================
-// API de ejemplo (acá irán tus rutas reales: auth, pacientes, etc.)
-// ====================
-app.get("/api/hello", (req, res) => {
-  res.json({ message: "API funcionando 🚀" });
-});
+const server = await registerRoutes(app);
 
-// ====================
-// Configuración para servir el frontend
-// ====================
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+if (process.env.NODE_ENV === "production") {
+  const publicPath = path.resolve(__dirname, "../dist/public");
+  app.use(express.static(publicPath));
 
-// Servimos los archivos de Vite ya construidos
-app.use(express.static(path.join(__dirname, "../dist")));
+  app.get("*", (req, res) => {
+    if (!req.path.startsWith("/api")) {
+      res.sendFile(path.join(publicPath, "index.html"));
+    }
+  });
+}
 
-// Fallback: cualquier ruta que no sea API devuelve index.html
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../dist/index.html"));
-});
-
-// ====================
-// Inicio del servidor
-// ====================
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });

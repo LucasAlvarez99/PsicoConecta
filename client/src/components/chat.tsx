@@ -39,9 +39,18 @@ export default function Chat() {
   // Initialize WebSocket connection with secure authentication
   useEffect(() => {
     if (!user) return;
+    
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    let reconnectTimeout: NodeJS.Timeout;
 
-    const connectWebSocket = async () => {
+    const connectWebSocket = async (isReconnect = false) => {
       try {
+        if (isReconnect && reconnectAttempts >= maxReconnectAttempts) {
+          console.log('Max reconnection attempts reached');
+          return null;
+        }
+        
         // Fetch secure WebSocket token
         const response = await fetch('/api/auth/ws-token', {
           credentials: 'include'
@@ -82,12 +91,19 @@ export default function Chat() {
           setSocket(null);
           
           // Handle authentication failures
-          if (event.code === 4001) {
+          if (event.code === 4001 || event.code === 4003) {
             toast({
               title: "Authentication Failed",
               description: "Chat session expired. Please refresh the page.",
               variant: "destructive",
             });
+          } else if (event.code !== 1000 && event.code !== 1001) {
+            // Attempt to reconnect for abnormal closures
+            reconnectAttempts++;
+            reconnectTimeout = setTimeout(() => {
+              console.log(`Attempting to reconnect... (${reconnectAttempts}/${maxReconnectAttempts})`);
+              connectWebSocket(true);
+            }, Math.min(1000 * Math.pow(2, reconnectAttempts), 30000));
           }
         };
 
@@ -116,13 +132,19 @@ export default function Chat() {
     
     connectWebSocket().then((ws) => {
       if (ws) {
-        cleanup = () => ws.close();
+        cleanup = () => {
+          if (reconnectTimeout) clearTimeout(reconnectTimeout);
+          ws.close();
+        };
       }
     });
     
     return () => {
       if (cleanup) {
         cleanup();
+      }
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
       }
     };
   }, [user, queryClient, otherUserId, toast]);

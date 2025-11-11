@@ -2,21 +2,16 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Brain, 
-  Home, 
-  User, 
-  Settings, 
-  LogOut,
-  Menu,
-  X 
-} from "lucide-react";
+import { Brain, Chrome as Home, User, Settings, LogOut, Menu, X } from "lucide-react";
 import { useState } from "react";
+import AuthDialog from "@/components/auth-dialog";
+import { supabase } from "@/lib/supabase";
 
 export default function Navigation() {
   const { user, isAuthenticated } = useAuth();
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -90,16 +85,18 @@ export default function Navigation() {
             {!isAuthenticated ? (
               // Not logged in buttons
               <>
-                <Button 
-                  variant="ghost" 
-                  onClick={() => window.location.href = "/api/login"}
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowAuthDialog(true)}
                   data-testid="button-login"
+                  className="hover:bg-primary/10 hover:text-primary transition-colors"
                 >
                   Iniciar Sesión
                 </Button>
-                <Button 
-                  onClick={() => window.location.href = "/api/login"}
+                <Button
+                  onClick={() => setShowAuthDialog(true)}
                   data-testid="button-register"
+                  className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                   Reservar Cita
                 </Button>
@@ -133,11 +130,15 @@ export default function Navigation() {
                     </div>
                   </div>
                 </div>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
-                  onClick={() => window.location.href = "/api/logout"}
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    window.location.href = "/";
+                  }}
                   data-testid="button-logout"
+                  className="hover:bg-destructive hover:text-destructive-foreground transition-colors"
                 >
                   <LogOut className="w-4 h-4 mr-2" />
                   Salir
@@ -175,16 +176,18 @@ export default function Navigation() {
                   <a href="#testimonios" className="block px-3 py-2 text-foreground hover:text-primary transition-colors">Testimonios</a>
                   <a href="#contacto" className="block px-3 py-2 text-foreground hover:text-primary transition-colors">Contacto</a>
                   <div className="border-t border-border mt-4 pt-4 space-y-2">
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       className="w-full"
-                      onClick={() => window.location.href = "/api/login"}
+                      onClick={() => { setShowAuthDialog(true); setIsMobileMenuOpen(false); }}
+                      data-testid="button-mobile-login"
                     >
                       Iniciar Sesión
                     </Button>
-                    <Button 
+                    <Button
                       className="w-full"
-                      onClick={() => window.location.href = "/api/login"}
+                      onClick={() => { setShowAuthDialog(true); setIsMobileMenuOpen(false); }}
+                      data-testid="button-mobile-register"
                     >
                       Reservar Cita
                     </Button>
@@ -251,10 +254,14 @@ export default function Navigation() {
                         </div>
                       </div>
                     )}
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="w-full"
-                      onClick={() => window.location.href = "/api/logout"}
+                      onClick={async () => {
+                        await supabase.auth.signOut();
+                        window.location.href = "/";
+                      }}
+                      data-testid="button-mobile-logout"
                     >
                       <LogOut className="w-4 h-4 mr-2" />
                       Cerrar Sesión
@@ -266,6 +273,7 @@ export default function Navigation() {
           </div>
         )}
       </div>
+      <AuthDialog open={showAuthDialog} onOpenChange={setShowAuthDialog} />
     </nav>
   );
 }
