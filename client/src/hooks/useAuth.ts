@@ -1,22 +1,29 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
-import type { User } from "@shared/schema";
+import { supabase } from "../../../src/integrations/supabase/client";
+import { mapDbUserToUser, type User } from "@/lib/mappers";
 import { useEffect, useState } from "react";
+import type { Session, AuthChangeEvent } from "@supabase/supabase-js";
 
 export function useAuth() {
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+    const initSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      setSession(data.session);
       setIsInitialized(true);
-    });
+    };
+
+    initSession();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    } = supabase.auth.onAuthStateChange((
+      _event: AuthChangeEvent,
+      nextSession: Session | null,
+    ) => {
+      setSession(nextSession);
     });
 
     return () => subscription.unsubscribe();
@@ -40,7 +47,7 @@ export function useAuth() {
         return null;
       }
 
-      return data;
+      return data ? mapDbUserToUser(data) : null;
     },
   });
 

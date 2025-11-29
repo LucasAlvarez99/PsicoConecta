@@ -1,17 +1,15 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import Navigation from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Send, MessageCircle, User, ArrowLeft } from "lucide-react";
+import { Send, MessageCircle, User } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRoute } from "wouter";
 import type { ChatMessage, User as UserType } from "@shared/schema";
 
-export default function ChatPage() {
+export default function Chat() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -19,57 +17,28 @@ export default function ChatPage() {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Get patient ID from route
-  const [match, params] = useRoute("/chat/:patientId");
-  const patientId = params?.patientId;
-
-  // Fetch patient information
-  const { data: patient } = useQuery<UserType>({
-    queryKey: ["/api/admin/patients", patientId],
-    queryFn: async () => {
-      const response = await fetch(`/api/admin/patients`, {
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Failed to fetch patients');
-      const patients = await response.json();
-      return patients.find((p: UserType) => p.id === patientId);
-    },
-    enabled: !!patientId && user?.role === 'psychologist',
-    retry: false,
-  });
-
-  // For patients, determine the psychologist to chat with
+  // Fetch psychologist information
   const { data: psychologist } = useQuery<UserType>({
     queryKey: ["/api/psychologist"],
     retry: false,
-    enabled: user?.role === 'patient',
   });
   
   // Determine the other user ID based on current user role
+  // NOTE: This component is used in home page - psychologists should use admin panel for patient-specific chats
   const otherUserId = user?.role === 'psychologist' 
-    ? patientId // Psychologist chats with selected patient
-    : psychologist?.id; // Patients chat with the real psychologist
+    ? null // Psychologists should use admin panel for patient-specific chats
+    : psychologist?.id; // Patients chat with the psychologist
 
   // Fetch chat messages
   const { data: messages = [], isLoading } = useQuery<ChatMessage[]>({
     queryKey: ["/api/chat", otherUserId],
-    queryFn: async () => {
-      if (!otherUserId) throw new Error('Other user ID is required');
-      const response = await fetch(`/api/chat/${otherUserId}`, {
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        throw new Error('Failed to fetch chat messages');
-      }
-      return response.json();
-    },
     retry: false,
     enabled: !!user && !!otherUserId,
   });
 
   // Initialize WebSocket connection with secure authentication
   useEffect(() => {
-    if (!user || !otherUserId) return;
+    if (!user) return;
     
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 5;
@@ -190,7 +159,6 @@ export default function ChatPage() {
       return;
     }
 
-    // SECURITY: Don't send senderId from client - server uses verified JWT identity
     const messageData = {
       type: 'chat_message',
       receiverId: otherUserId,
@@ -208,153 +176,118 @@ export default function ChatPage() {
     }
   };
 
-  // Redirect if not authorized
-  if (!user || (user.role === 'psychologist' && !patientId) || (user.role === 'patient' && !psychologist)) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground mb-4">No authorized to access this chat</p>
-          <Button onClick={() => window.location.href = user?.role === 'psychologist' ? '/admin' : '/'}>
-            Go Back
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-            <p className="text-muted-foreground">Cargando mensajes...</p>
-          </div>
-        </div>
+      <div className="text-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+        <p className="text-muted-foreground">Cargando mensajes...</p>
       </div>
     );
   }
 
-  const chatPartner = user?.role === 'psychologist' ? patient : psychologist;
-
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Chat Header */}
-        <div className="mb-6">
-          <div className="flex items-center space-x-4 mb-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => window.location.href = user?.role === 'psychologist' ? '/admin' : '/'}
-              data-testid="button-back-to-admin"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Volver
-            </Button>
+    <div className="flex flex-col h-96 bg-muted/50 rounded-2xl" data-testid="chat-container">
+      {/* Chat Header */}
+      <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+            <MessageCircle className="w-4 h-4 text-primary" />
           </div>
-          
-          <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-              {chatPartner?.profileImageUrl ? (
-                <img 
-                  src={chatPartner.profileImageUrl} 
-                  alt={chatPartner.firstName || "User"}
-                  className="w-12 h-12 rounded-full object-cover"
-                />
-              ) : (
-                <User className="w-6 h-6 text-primary" />
-              )}
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground" data-testid="text-chat-partner-name">
-                {chatPartner?.firstName} {chatPartner?.lastName}
-              </h1>
-              <p className="text-muted-foreground">
-                {user?.role === 'psychologist' ? 'Paciente' : 'Psicóloga'} • {chatPartner?.email}
-              </p>
-            </div>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-              En línea
-            </Badge>
-          </div>
-        </div>
-
-        {/* Chat Container */}
-        <div className="bg-card rounded-lg border border-border shadow-sm">
-          {/* Messages Area */}
-          <ScrollArea className="h-96 p-4" data-testid="chat-messages-area">
-            {messages.length === 0 ? (
-              <div className="text-center py-8">
-                <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">
-                  No hay mensajes aún. ¡Inicia la conversación!
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex ${msg.senderId === user.id ? 'justify-end' : 'justify-start'}`}
-                    data-testid={`message-${msg.id}`}
-                  >
-                    <div
-                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                        msg.senderId === user.id
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground'
-                      }`}
-                    >
-                      <p className="text-sm">{msg.message}</p>
-                      <p className="text-xs opacity-70 mt-1">
-                        {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : 'Ahora'}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
-            )}
-          </ScrollArea>
-
-          {/* Message Input */}
-          <div className="p-4 border-t border-border">
-            <div className="flex space-x-2">
-              <Input
-                placeholder="Escribe tu mensaje..."
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="flex-1"
-                data-testid="input-chat-message"
-                disabled={!socket || socket.readyState !== WebSocket.OPEN}
-              />
-              <Button 
-                onClick={sendMessage}
-                disabled={!message.trim() || !socket || socket.readyState !== WebSocket.OPEN}
-                data-testid="button-send-message"
-              >
-                <Send className="w-4 h-4" />
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2 flex items-center">
-              <div className={`w-2 h-2 rounded-full mr-2 ${
-                socket && socket.readyState === WebSocket.OPEN 
-                  ? 'bg-green-500' 
-                  : 'bg-red-500'
-              }`} />
-              {socket && socket.readyState === WebSocket.OPEN 
-                ? 'Conectado • Mensajes cifrados end-to-end' 
-                : 'Desconectado • Reconectando...'
-              }
+          <div>
+            <p className="font-medium text-foreground" data-testid="chat-title">
+              {user?.role === 'psychologist' ? 'Chat con Pacientes' : 'Chat con Dra. González'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {socket?.readyState === WebSocket.OPEN ? 'Conectado' : 'Desconectado'}
             </p>
           </div>
         </div>
+        
+        <Badge variant={socket?.readyState === WebSocket.OPEN ? "default" : "secondary"} data-testid="connection-status">
+          {socket?.readyState === WebSocket.OPEN ? 'En línea' : 'Fuera de línea'}
+        </Badge>
+      </div>
+
+      {/* Messages */}
+      <ScrollArea className="flex-1 p-4" data-testid="messages-area">
+        <div className="space-y-4">
+          {messages.length === 0 ? (
+            <div className="text-center py-8">
+              <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground" data-testid="no-messages">
+                No hay mensajes aún. ¡Inicia la conversación!
+              </p>
+            </div>
+          ) : (
+            messages.map((msg: ChatMessage) => {
+              const isOwnMessage = msg.senderId === user?.id;
+              
+              return (
+                <div 
+                  key={msg.id} 
+                  className={`flex items-start space-x-3 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                  data-testid={`message-${msg.id}`}
+                >
+                  {!isOwnMessage && (
+                    <div className="w-8 h-8 bg-accent/20 rounded-full flex items-center justify-center">
+                      <User className="w-4 h-4 text-accent" />
+                    </div>
+                  )}
+                  
+                  <div className={`flex-1 max-w-xs p-3 rounded-lg ${
+                    isOwnMessage 
+                      ? 'bg-primary text-primary-foreground ml-12' 
+                      : 'bg-card border border-border mr-12'
+                  }`}>
+                    <p className="text-sm" data-testid={`message-content-${msg.id}`}>
+                      {msg.message}
+                    </p>
+                    <p className={`text-xs mt-1 ${
+                      isOwnMessage ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                    }`} data-testid={`message-time-${msg.id}`}>
+                      {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : 'N/A'}
+                    </p>
+                  </div>
+
+                  {isOwnMessage && (
+                    <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
+                      <User className="w-4 h-4 text-primary" />
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </ScrollArea>
+
+      {/* Message Input */}
+      <div className="p-4 border-t border-border">
+        <div className="flex space-x-2">
+          <Input
+            placeholder="Escribe tu mensaje..."
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            disabled={socket?.readyState !== WebSocket.OPEN}
+            data-testid="message-input"
+          />
+          <Button 
+            onClick={sendMessage}
+            disabled={!message.trim() || socket?.readyState !== WebSocket.OPEN}
+            size="icon"
+            data-testid="send-button"
+          >
+            <Send className="w-4 h-4" />
+          </Button>
+        </div>
+        
+        {socket?.readyState !== WebSocket.OPEN && (
+          <p className="text-xs text-muted-foreground mt-2" data-testid="connection-error">
+            Reconectando al chat...
+          </p>
+        )}
       </div>
     </div>
   );

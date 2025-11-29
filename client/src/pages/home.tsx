@@ -1,8 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import Navigation from "@/components/navigation";
-import CalendarComponent from "@/components/calendar";
+import AuthDialog from "@/components/auth-dialog";
 import Chat from "@/components/chat";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { Link } from "wouter";
 export default function Home() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -179,7 +180,10 @@ export default function Home() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <CalendarComponent />
+                <div className="text-center py-8">
+                  <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">Próximamente: Sistema de citas integrado</p>
+                </div>
               </CardContent>
             </Card>
           </div>

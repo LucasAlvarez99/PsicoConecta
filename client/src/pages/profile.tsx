@@ -22,9 +22,6 @@ export default function Profile() {
     firstName: "",
     lastName: "",
     email: "",
-    phone: "",
-    dateOfBirth: "",
-    personalNotes: ""
   });
 
   // Redirect to login if not authenticated
@@ -49,9 +46,6 @@ export default function Profile() {
         firstName: user.firstName || "",
         lastName: user.lastName || "",
         email: user.email || "",
-        phone: user.phone || "",
-        dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
-        personalNotes: user.personalNotes || ""
       });
     }
   }, [user]);
@@ -192,7 +186,7 @@ export default function Profile() {
                       {user.role === 'psychologist' ? 'Psicólogo Profesional' : 'Paciente'}
                     </p>
                     <p className="text-sm text-gray-500">
-                      Miembro desde {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                      Miembro desde {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -237,61 +231,6 @@ export default function Profile() {
                     className="border-gray-200 focus:border-primary focus:ring-primary/20 disabled:bg-gray-50"
                   />
                 </div>
-
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <Label htmlFor="phone" className="text-gray-700 font-medium">Teléfono</Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      data-testid="input-phone"
-                      className="border-gray-200 focus:border-primary focus:ring-primary/20 disabled:bg-gray-50"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="dateOfBirth" className="text-gray-700 font-medium">Fecha de Nacimiento</Label>
-                    <Input
-                      id="dateOfBirth"
-                      name="dateOfBirth"
-                      type="date"
-                      value={formData.dateOfBirth}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      data-testid="input-date-of-birth"
-                      className="border-gray-200 focus:border-primary focus:ring-primary/20 disabled:bg-gray-50"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Personal Notes Card */}
-          <div>
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-primary/5 hover:shadow-xl transition-all duration-300" data-testid="card-personal-notes">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-br from-accent to-primary rounded-lg flex items-center justify-center">
-                    <Edit className="w-4 h-4 text-white" />
-                  </div>
-                  <span>Notas Personales</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  name="personalNotes"
-                  placeholder="Escribe tus pensamientos, objetivos o temas para las sesiones..."
-                  rows={10}
-                  value={formData.personalNotes}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                  data-testid="textarea-personal-notes"
-                  className="border-gray-200 focus:border-primary focus:ring-primary/20 disabled:bg-gray-50 resize-none"
-                />
               </CardContent>
             </Card>
 
@@ -313,7 +252,7 @@ export default function Profile() {
                 <div className="flex items-center space-x-3 text-sm p-3 bg-blue-50 rounded-lg border border-blue-200">
                   <Calendar className="w-4 h-4 text-blue-600" />
                   <span className="text-blue-700">
-                    Registro: {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                    Registro: {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
                   </span>
                 </div>
                 <div className="flex items-center space-x-3 text-sm p-3 bg-purple-50 rounded-lg border border-purple-200">

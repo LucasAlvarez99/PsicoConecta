@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Brain, Chrome as Home, User, Settings, LogOut, Menu, X } from "lucide-react";
 import { useState } from "react";
 import AuthDialog from "@/components/auth-dialog";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "../../../src/integrations/supabase/client";
 
 export default function Navigation() {
   const { user, isAuthenticated } = useAuth();

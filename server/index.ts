@@ -17,19 +17,24 @@ app.use(cors({
 }));
 app.use(express.json());
 
-const server = await registerRoutes(app);
-
+// Configure production static files before registering routes
 if (process.env.NODE_ENV === "production") {
   const publicPath = path.resolve(__dirname, "../dist/public");
   app.use(express.static(publicPath));
-
-  app.get("*", (req, res) => {
-    if (!req.path.startsWith("/api")) {
-      res.sendFile(path.join(publicPath, "index.html"));
-    }
-  });
 }
 
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+// Start the server and register routes
+registerRoutes(app).then(server => {
+  if (process.env.NODE_ENV === "production") {
+    const publicPath = path.resolve(__dirname, "../dist/public");
+    app.get("*", (req, res) => {
+      if (!req.path.startsWith("/api")) {
+        res.sendFile(path.join(publicPath, "index.html"));
+      }
+    });
+  }
+
+  server.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+  });
 });

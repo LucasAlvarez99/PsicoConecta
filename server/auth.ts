@@ -1,18 +1,24 @@
 import type { RequestHandler } from "express";
 import * as jwt from "jsonwebtoken";
+import { getAuthSecret } from "./utils/jwt";
 
-export const isAuthenticated: RequestHandler = (req, res, next) => {
-  const auth = (req.headers.authorization || "").toString();
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : auth;
+export interface JWTPayload {
+  userId: string;
+  role: string;
+  [key: string]: any;
+}
+
+export const verifyToken: RequestHandler = (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
 
   if (!token) {
-    return res.status(401).json({ message: "Unauthorized" });
+    return res.status(401).json({ message: "No token provided" });
   }
 
   try {
-    const secret = process.env.WS_JWT_SECRET || process.env.JWT_SECRET || "dev-secret";
+    const secret = getAuthSecret();
     const payload = jwt.verify(token, secret);
-    (req as any).user = payload; // attach payload to req.user
+    (req as any).user = payload;
     next();
   } catch (err) {
     return res.status(401).json({ message: "Unauthorized" });

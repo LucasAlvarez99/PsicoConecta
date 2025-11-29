@@ -2,33 +2,16 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { isAuthenticated } from "./auth";
+import { verifyToken } from "./auth";
 import { insertAppointmentSchema, insertChatMessageSchema, insertTestimonialSchema, upsertUserSchema, updateAppointmentSchema } from "@shared/schema";
 import { z } from "zod";
-import * as jwt from "jsonwebtoken";
-
-// Secure JWT secret configuration for production
-function getWebSocketSecret(): string {
-  const wsSecret = process.env.WS_JWT_SECRET;
-  
-  // In production, require explicit configuration
-  if (process.env.NODE_ENV === 'production' && !wsSecret) {
-    throw new Error('WS_JWT_SECRET environment variable must be set in production');
-  }
-  
-  // In development, allow fallback but warn
-  if (!wsSecret) {
-    throw new Error('WS_JWT_SECRET environment variable must be set');
-  }
-  
-  return wsSecret;
-}
+import { createWebSocketToken, verifyWebSocketToken } from "./utils/jwt";
 
 export async function registerRoutes(app: Express): Promise<Server> {
  
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', verifyToken, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -40,7 +23,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate secure WebSocket token for authenticated users
-  app.get('/api/auth/ws-token', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/ws-token', verifyToken, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -49,20 +32,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      // Create JWT token with user ID and short expiry (15 minutes)
-      const wsSecret = getWebSocketSecret();
-      const token = jwt.sign(
-        { 
-          userId: user.id,
-          role: user.role,
-        },
-        wsSecret,
-        { 
-          expiresIn: '15m',
-          issuer: 'psicoconecta-ws',
-          subject: user.id
-        }
-      );
+      const token = createWebSocketToken({
+        userId: user.id,
+        role: user.role,
+      });
       
       res.json({ token });
     } catch (error) {
@@ -72,7 +45,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Appointment routes
-  app.post('/api/appointments', isAuthenticated, async (req: any, res) => {
+  app.post('/api/appointments', verifyToken, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const appointmentData = insertAppointmentSchema.parse({
@@ -87,7 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/appointments', isAuthenticated, async (req: any, res) => {
+  app.get('/api/appointments', verifyToken, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -106,7 +79,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/appointments/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/appointments/:id', verifyToken, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { id } = req.params;
@@ -146,7 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Chat routes
-  app.get('/api/chat/:otherUserId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/chat/:otherUserId', verifyToken, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { otherUserId } = req.params;
@@ -180,7 +153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Testimonial routes
-  app.post('/api/testimonials', isAuthenticated, async (req: any, res) => {
+  app.post('/api/testimonials', verifyToken, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const testimonialData = insertTestimonialSchema.parse({
@@ -205,7 +178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/testimonials', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/testimonials', verifyToken, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -222,7 +195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/admin/testimonials/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/admin/testimonials/:id', verifyToken, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -242,7 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Patient routes
-  app.patch('/api/profile/notes', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/profile/notes', verifyToken, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { notes } = req.body;
@@ -254,7 +227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/profile', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/profile', verifyToken, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       
@@ -311,7 +284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/patients', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/patients', verifyToken, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -334,7 +307,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const wss = new WebSocketServer({ 
     server: httpServer, 
     path: '/ws',
-    verifyClient: (info) => {
+    verifyClient: (info: { req: any; origin: string; secure: boolean }) => {
       try {
         // Extract JWT token from query parameters
         const url = new URL(info.req.url!, `http://${info.req.headers.host}`);
@@ -346,9 +319,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Verify JWT token
-        const wsSecret = getWebSocketSecret();
         try {
-          const decoded = jwt.verify(token, wsSecret) as any;
+          const decoded = verifyWebSocketToken(token);
           if (!decoded.userId) {
             console.log('WebSocket connection rejected: Invalid token payload');
             return false;

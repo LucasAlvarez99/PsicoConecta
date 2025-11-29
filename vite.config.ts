@@ -1,13 +1,14 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "url";
-import path from "path"
+import path from "path";
+import { componentTagger } from "lovable-tagger";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
-
-  ],
+    mode === 'development' && componentTagger(),
+  ].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(path.dirname(fileURLToPath(import.meta.url)), "client", "src"),
@@ -21,7 +22,8 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    port: 5173,
+    host: "::",
+    port: 8080,
     proxy: {
       '/api': {
         target: 'http://localhost:5173',
@@ -37,4 +39,4 @@ export default defineConfig({
       deny: ["**/.*"],
     },
   },
-});
+}));

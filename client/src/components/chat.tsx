@@ -1,179 +1,99 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Send, MessageCircle, User } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChatHeader } from "@/components/chat/chat-header";
+import { ChatMessageItem } from "@/components/chat/chat-message";
+import { ChatInput } from "@/components/chat/chat-input";
 import type { ChatMessage, User as UserType } from "@shared/schema";
+import { API_ENDPOINTS, WEBSOCKET_CONFIG } from "@/lib/constants";
 
 export default function Chat() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [message, setMessage] = useState("");
-  const [socket, setSocket] = useState<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // Fetch psychologist information
   const { data: psychologist } = useQuery<UserType>({
-    queryKey: ["/api/psychologist"],
+    queryKey: [API_ENDPOINTS.psychologist],
     retry: false,
   });
   
   // Determine the other user ID based on current user role
-  // NOTE: This component is used in home page - psychologists should use admin panel for patient-specific chats
   const otherUserId = user?.role === 'psychologist' 
     ? null // Psychologists should use admin panel for patient-specific chats
     : psychologist?.id; // Patients chat with the psychologist
 
   // Fetch chat messages
   const { data: messages = [], isLoading } = useQuery<ChatMessage[]>({
-    queryKey: ["/api/chat", otherUserId],
+    queryKey: [API_ENDPOINTS.chat, otherUserId],
     retry: false,
     enabled: !!user && !!otherUserId,
   });
 
-  // Initialize WebSocket connection with secure authentication
+  // Get WebSocket token and connect
+  const [wsToken, setWsToken] = useState<string>("");
+  
   useEffect(() => {
     if (!user) return;
     
-    let reconnectAttempts = 0;
-    const maxReconnectAttempts = 5;
-    let reconnectTimeout: NodeJS.Timeout;
-
-    const connectWebSocket = async (isReconnect = false) => {
+    const fetchToken = async () => {
       try {
-        if (isReconnect && reconnectAttempts >= maxReconnectAttempts) {
-          console.log('Max reconnection attempts reached');
-          return null;
-        }
-        
-        // Fetch secure WebSocket token
-        const response = await fetch('/api/auth/ws-token', {
+        const response = await fetch(API_ENDPOINTS.auth.wsToken, {
           credentials: 'include'
         });
         
-        if (!response.ok) {
-          throw new Error('Failed to get WebSocket token');
+        if (response.ok) {
+          const { token } = await response.json();
+          setWsToken(token);
         }
-        
-        const { token } = await response.json();
-        
-        // Connect to WebSocket with secure token
-        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const host = window.location.port ? `${window.location.hostname}:${window.location.port}` : window.location.hostname;
-        const wsUrl = `${protocol}//${host}/ws?token=${encodeURIComponent(token)}`;
-        
-        const ws = new WebSocket(wsUrl);
-        
-        ws.onopen = () => {
-          console.log('WebSocket connected securely');
-          setSocket(ws);
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'chat_message') {
-              // Invalidate and refetch messages when new message received
-              queryClient.invalidateQueries({ queryKey: ["/api/chat", otherUserId] });
-            }
-          } catch (error) {
-            console.error('WebSocket message error:', error);
-          }
-        };
-
-        ws.onclose = (event) => {
-          console.log('WebSocket disconnected', event.code, event.reason);
-          setSocket(null);
-          
-          // Handle authentication failures
-          if (event.code === 4001 || event.code === 4003) {
-            toast({
-              title: "Authentication Failed",
-              description: "Chat session expired. Please refresh the page.",
-              variant: "destructive",
-            });
-          } else if (event.code !== 1000 && event.code !== 1001) {
-            // Attempt to reconnect for abnormal closures
-            reconnectAttempts++;
-            reconnectTimeout = setTimeout(() => {
-              console.log(`Attempting to reconnect... (${reconnectAttempts}/${maxReconnectAttempts})`);
-              connectWebSocket(true);
-            }, Math.min(1000 * Math.pow(2, reconnectAttempts), 30000));
-          }
-        };
-
-        ws.onerror = (error) => {
-          console.error('WebSocket error:', error);
-          toast({
-            title: "Connection Error",
-            description: "Chat connection failed. Please check your connection.",
-            variant: "destructive",
-          });
-        };
-
-        return ws;
       } catch (error) {
-        console.error('Failed to connect to WebSocket:', error);
-        toast({
-          title: "Connection Failed",
-          description: "Unable to establish chat connection. Please try again.",
-          variant: "destructive",
-        });
-        return null;
+        console.error('Failed to fetch WebSocket token:', error);
       }
     };
+    
+    fetchToken();
+  }, [user]);
 
-    let cleanup: (() => void) | undefined;
-    
-    connectWebSocket().then((ws) => {
-      if (ws) {
-        cleanup = () => {
-          if (reconnectTimeout) clearTimeout(reconnectTimeout);
-          ws.close();
-        };
+  // Initialize WebSocket connection
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const host = window.location.port 
+    ? `${window.location.hostname}:${window.location.port}` 
+    : window.location.hostname;
+  const wsUrl = wsToken ? `${protocol}//${host}/ws?token=${encodeURIComponent(wsToken)}` : "";
+
+  const { isConnected, sendMessage: wsSendMessage } = useWebSocket({
+    url: wsUrl,
+    enabled: !!user && !!wsUrl,
+    onMessage: (data) => {
+      if (data.type === 'chat_message') {
+        // Invalidate and refetch messages when new message received
+        queryClient.invalidateQueries({ 
+          queryKey: [API_ENDPOINTS.chat, otherUserId] 
+        });
       }
-    });
-    
-    return () => {
-      if (cleanup) {
-        cleanup();
-      }
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout);
-      }
-    };
-  }, [user, queryClient, otherUserId, toast]);
+    },
+    reconnectAttempts: WEBSOCKET_CONFIG.reconnectAttempts,
+    reconnectDelay: WEBSOCKET_CONFIG.reconnectDelay,
+  });
 
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = () => {
-    if (!message.trim() || !socket || !user || socket.readyState !== WebSocket.OPEN) {
-      return;
-    }
+  const handleSendMessage = (message: string) => {
+    if (!user || !otherUserId) return;
 
     const messageData = {
       type: 'chat_message',
       receiverId: otherUserId,
-      message: message.trim(),
+      message,
     };
 
-    socket.send(JSON.stringify(messageData));
-    setMessage("");
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      sendMessage();
-    }
+    wsSendMessage(messageData);
   };
 
   if (isLoading) {
@@ -185,28 +105,13 @@ export default function Chat() {
     );
   }
 
+  const chatTitle = user?.role === 'psychologist' 
+    ? 'Chat con Pacientes' 
+    : 'Chat con Dra. González';
+
   return (
     <div className="flex flex-col h-96 bg-muted/50 rounded-2xl" data-testid="chat-container">
-      {/* Chat Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-            <MessageCircle className="w-4 h-4 text-primary" />
-          </div>
-          <div>
-            <p className="font-medium text-foreground" data-testid="chat-title">
-              {user?.role === 'psychologist' ? 'Chat con Pacientes' : 'Chat con Dra. González'}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {socket?.readyState === WebSocket.OPEN ? 'Conectado' : 'Desconectado'}
-            </p>
-          </div>
-        </div>
-        
-        <Badge variant={socket?.readyState === WebSocket.OPEN ? "default" : "secondary"} data-testid="connection-status">
-          {socket?.readyState === WebSocket.OPEN ? 'En línea' : 'Fuera de línea'}
-        </Badge>
-      </div>
+      <ChatHeader title={chatTitle} isConnected={isConnected} />
 
       {/* Messages */}
       <ScrollArea className="flex-1 p-4" data-testid="messages-area">
@@ -219,76 +124,22 @@ export default function Chat() {
               </p>
             </div>
           ) : (
-            messages.map((msg: ChatMessage) => {
-              const isOwnMessage = msg.senderId === user?.id;
-              
-              return (
-                <div 
-                  key={msg.id} 
-                  className={`flex items-start space-x-3 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
-                  data-testid={`message-${msg.id}`}
-                >
-                  {!isOwnMessage && (
-                    <div className="w-8 h-8 bg-accent/20 rounded-full flex items-center justify-center">
-                      <User className="w-4 h-4 text-accent" />
-                    </div>
-                  )}
-                  
-                  <div className={`flex-1 max-w-xs p-3 rounded-lg ${
-                    isOwnMessage 
-                      ? 'bg-primary text-primary-foreground ml-12' 
-                      : 'bg-card border border-border mr-12'
-                  }`}>
-                    <p className="text-sm" data-testid={`message-content-${msg.id}`}>
-                      {msg.message}
-                    </p>
-                    <p className={`text-xs mt-1 ${
-                      isOwnMessage ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                    }`} data-testid={`message-time-${msg.id}`}>
-                      {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : 'N/A'}
-                    </p>
-                  </div>
-
-                  {isOwnMessage && (
-                    <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
-                      <User className="w-4 h-4 text-primary" />
-                    </div>
-                  )}
-                </div>
-              );
-            })
+            messages.map((msg: ChatMessage) => (
+              <ChatMessageItem
+                key={msg.id}
+                message={msg}
+                isOwnMessage={msg.senderId === user?.id}
+              />
+            ))
           )}
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
 
-      {/* Message Input */}
-      <div className="p-4 border-t border-border">
-        <div className="flex space-x-2">
-          <Input
-            placeholder="Escribe tu mensaje..."
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            disabled={socket?.readyState !== WebSocket.OPEN}
-            data-testid="message-input"
-          />
-          <Button 
-            onClick={sendMessage}
-            disabled={!message.trim() || socket?.readyState !== WebSocket.OPEN}
-            size="icon"
-            data-testid="send-button"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
-        
-        {socket?.readyState !== WebSocket.OPEN && (
-          <p className="text-xs text-muted-foreground mt-2" data-testid="connection-error">
-            Reconectando al chat...
-          </p>
-        )}
-      </div>
+      <ChatInput 
+        onSend={handleSendMessage}
+        disabled={!isConnected || !user || !otherUserId}
+      />
     </div>
   );
 }

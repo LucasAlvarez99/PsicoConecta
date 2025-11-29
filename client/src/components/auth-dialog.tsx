@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "../../../src/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,7 +66,7 @@ export default function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
           .from('users')
           .insert({
             id: authData.user.id,
-            email: authData.user.email,
+            email: authData.user.email || '',
             first_name: firstName,
             last_name: lastName,
             role: 'patient',
