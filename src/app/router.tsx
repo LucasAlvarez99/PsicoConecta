@@ -1,28 +1,37 @@
 // Ruta: src/app/Router.tsx
-import { Route, Switch, Redirect } from 'wouter';
-import { lazy, Suspense } from 'react';
-import { useAuthStore } from '@features/auth/store';
-import { LoadingScreen } from '@shared/ui/LoadingScreen';
+import { Route, Switch, useLocation } from 'wouter';
+import { lazy, Suspense, useEffect } from 'react';
+import { useAuthStore } from '../features/auth/store';
+import { LoadingScreen } from '../shared/ui/LoadingScreen';
 
 // Lazy load pages for better performance
-const Landing = lazy(() => import('@features/landing/Landing'));
-const Login = lazy(() => import('@features/auth/Login'));
-const Dashboard = lazy(() => import('@features/dashboard/Dashboard'));
-const Chat = lazy(() => import('@features/chat/Chat'));
-const Appointments = lazy(() => import('@features/appointments/Appointments'));
-const Profile = lazy(() => import('@features/profile/Profile'));
-const AIAssistant = lazy(() => import('@features/ai-assistant/AIAssistant'));
-const PatientList = lazy(() => import('@features/patients/PatientList'));
-const PatientDetail = lazy(() => import('@features/patients/PatientDetail'));
-const NotFound = lazy(() => import('@features/not-found/NotFound'));
+const Landing = lazy(() => import('../features/landing/Landing'));
+const Login = lazy(() => import('../features/auth/Login'));
+const Dashboard = lazy(() => import('../features/dashboard/Dashboard'));
+const Chat = lazy(() => import('../features/chat/Chat'));
+const Appointments = lazy(() => import('../features/appointments/Appointments'));
+const Profile = lazy(() => import('../features/profile/Profile'));
+const AIAssistant = lazy(() => import('../features/ai-assistant/AIAssistant'));
+const PatientList = lazy(() => import('../features/patients/PatientList'));
+const PatientDetail = lazy(() => import('../features/patients/PatientDetail'));
+const NotFound = lazy(() => import('../features/not-found/NotFound'));
+
+// Simple Redirect component using wouter's useLocation
+function Redirect({ to }: { to: string }) {
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    setLocation(to);
+  }, [to, setLocation]);
+  return null;
+}
 
 // Protected Route Wrapper
-function ProtectedRoute({ 
-  component: Component, 
-  requiredRole 
-}: { 
-  component: React.ComponentType; 
-  requiredRole?: 'psychologist' | 'patient' 
+function ProtectedRoute({
+  component: Component,
+  requiredRole
+}: {
+  component: React.ComponentType;
+  requiredRole?: 'psychologist' | 'patient';
 }) {
   const { user, isAuthenticated } = useAuthStore();
 
@@ -56,7 +65,7 @@ export function Router() {
         <Route path="/">
           <PublicRoute component={Landing} />
         </Route>
-        
+
         <Route path="/login">
           <PublicRoute component={Login} />
         </Route>
@@ -92,7 +101,9 @@ export function Router() {
         </Route>
 
         {/* 404 Not Found */}
-        <Route component={NotFound} />
+        <Route path="*">
+          <NotFound />
+        </Route>
       </Switch>
     </Suspense>
   );
