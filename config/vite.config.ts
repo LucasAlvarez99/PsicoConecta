@@ -1,3 +1,4 @@
+// Ruta: vite.config.ts
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -11,8 +12,8 @@ export default defineConfig({
       '@app': path.resolve(__dirname, './src/app'),
       '@features': path.resolve(__dirname, './src/features'),
       '@shared': path.resolve(__dirname, './src/shared'),
-      '@server': path.resolve(__dirname, './src/server')
-    }
+      '@server': path.resolve(__dirname, './src/server'),
+    },
   },
 
   server: {
@@ -20,13 +21,13 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: 'http://localhost:3000',
-        changeOrigin: true
+        changeOrigin: true,
       },
       '/ws': {
         target: 'ws://localhost:3000',
-        ws: true
-      }
-    }
+        ws: true,
+      },
+    },
   },
 
   build: {
@@ -37,13 +38,13 @@ export default defineConfig({
         manualChunks: {
           'react-vendor': ['react', 'react-dom'],
           'ui-vendor': ['lucide-react', 'recharts'],
-          'form-vendor': ['react-hook-form', 'zod']
-        }
-      }
-    }
+          'form-vendor': ['react-hook-form', 'zod'],
+        },
+      },
+    },
   },
 
   optimizeDeps: {
-    include: ['react', 'react-dom', 'zustand']
-  }
+    include: ['react', 'react-dom', 'zustand'],
+  },
 });
