@@ -1,4 +1,4 @@
-// Ruta: tailwind.config.ts
+// Ruta: tailwind.config.ts (en la raíz del proyecto, NO en config/)
 import type { Config } from 'tailwindcss';
 
 export default {
