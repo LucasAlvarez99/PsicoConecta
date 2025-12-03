@@ -1,5 +1,5 @@
 // Ruta: src/app/App.tsx
-import { Router } from './Router';
+import { Router } from './router';
 import { AuthProvider } from '../features/auth/AuthProvider';
 import { Toaster } from '../shared/ui/Toast';
 
