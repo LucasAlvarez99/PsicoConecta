@@ -1,10 +1,11 @@
-// Ruta: src/app/Router.tsx
+// ===== src/app/Router.tsx (ACTUALIZADO) =====
 import { Route, Switch, useLocation } from 'wouter';
 import { lazy, Suspense, useEffect } from 'react';
 import { useAuthStore } from '../features/auth/store';
 import { LoadingScreen } from '../shared/ui/LoadingScreen';
+import { Layout } from '../shared/ui/Layout';
 
-// Lazy load pages for better performance
+// Lazy load pages
 const Landing = lazy(() => import('../features/landing/Landing'));
 const Login = lazy(() => import('../features/auth/Login'));
 const Dashboard = lazy(() => import('../features/dashboard/Dashboard'));
@@ -16,7 +17,7 @@ const PatientList = lazy(() => import('../features/patients/PatientList'));
 const PatientDetail = lazy(() => import('../features/patients/PatientDetail'));
 const NotFound = lazy(() => import('../features/not-found/NotFound'));
 
-// Simple Redirect component using wouter's useLocation
+// Redirect component
 function Redirect({ to }: { to: string }) {
   const [, setLocation] = useLocation();
   useEffect(() => {
@@ -25,7 +26,7 @@ function Redirect({ to }: { to: string }) {
   return null;
 }
 
-// Protected Route Wrapper
+// Protected Route
 function ProtectedRoute({
   component: Component,
   requiredRole
@@ -46,7 +47,7 @@ function ProtectedRoute({
   return <Component />;
 }
 
-// Public Route (redirect to dashboard if authenticated)
+// Public Route
 function PublicRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated } = useAuthStore();
 
@@ -60,51 +61,53 @@ function PublicRoute({ component: Component }: { component: React.ComponentType 
 export function Router() {
   return (
     <Suspense fallback={<LoadingScreen />}>
-      <Switch>
-        {/* Public Routes */}
-        <Route path="/">
-          <PublicRoute component={Landing} />
-        </Route>
+      <Layout>
+        <Switch>
+          {/* Public Routes */}
+          <Route path="/">
+            <PublicRoute component={Landing} />
+          </Route>
 
-        <Route path="/login">
-          <PublicRoute component={Login} />
-        </Route>
+          <Route path="/login">
+            <PublicRoute component={Login} />
+          </Route>
 
-        {/* Protected Routes - All Users */}
-        <Route path="/dashboard">
-          <ProtectedRoute component={Dashboard} />
-        </Route>
+          {/* Protected Routes - All Users */}
+          <Route path="/dashboard">
+            <ProtectedRoute component={Dashboard} />
+          </Route>
 
-        <Route path="/profile">
-          <ProtectedRoute component={Profile} />
-        </Route>
+          <Route path="/profile">
+            <ProtectedRoute component={Profile} />
+          </Route>
 
-        <Route path="/chat/:patientId?">
-          <ProtectedRoute component={Chat} />
-        </Route>
+          <Route path="/chat/:patientId?">
+            <ProtectedRoute component={Chat} />
+          </Route>
 
-        <Route path="/appointments">
-          <ProtectedRoute component={Appointments} />
-        </Route>
+          <Route path="/appointments">
+            <ProtectedRoute component={Appointments} />
+          </Route>
 
-        {/* Protected Routes - Psychologist Only */}
-        <Route path="/ai-assistant">
-          <ProtectedRoute component={AIAssistant} requiredRole="psychologist" />
-        </Route>
+          {/* Protected Routes - Psychologist Only */}
+          <Route path="/ai-assistant">
+            <ProtectedRoute component={AIAssistant} requiredRole="psychologist" />
+          </Route>
 
-        <Route path="/patients">
-          <ProtectedRoute component={PatientList} requiredRole="psychologist" />
-        </Route>
+          <Route path="/patients">
+            <ProtectedRoute component={PatientList} requiredRole="psychologist" />
+          </Route>
 
-        <Route path="/patients/:patientId">
-          <ProtectedRoute component={PatientDetail} requiredRole="psychologist" />
-        </Route>
+          <Route path="/patients/:patientId">
+            <ProtectedRoute component={PatientDetail} requiredRole="psychologist" />
+          </Route>
 
-        {/* 404 Not Found */}
-        <Route path="*">
-          <NotFound />
-        </Route>
-      </Switch>
+          {/* 404 */}
+          <Route path="*">
+            <NotFound />
+          </Route>
+        </Switch>
+      </Layout>
     </Suspense>
   );
 }
