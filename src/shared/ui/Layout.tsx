@@ -1,4 +1,4 @@
-// ===== src/shared/ui/Layout.tsx =====
+// ===== src/shared/ui/Layout.tsx (MEJORADO) =====
 import { useAuthStore } from '../../features/auth/store';
 import { useLocation } from 'wouter';
 import { 
@@ -9,9 +9,13 @@ import {
   Users, 
   User,
   Sparkles,
-  LogOut
+  LogOut,
+  Home,
+  Settings
 } from 'lucide-react';
 import { Button } from './Button';
+import { Badge } from './Badge';
+import { Avatar } from './Avatar';
 import { authApi } from '../../features/auth/api';
 
 interface LayoutProps {
@@ -33,7 +37,7 @@ export function Layout({ children }: LayoutProps) {
     try {
       await authApi.logout();
       logout();
-      setLocation('/login');
+      setLocation('/');
     } catch (error) {
       console.error('Error logging out:', error);
     }
@@ -41,13 +45,12 @@ export function Layout({ children }: LayoutProps) {
 
   const navigation = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-    { name: 'Mensajes', icon: MessageSquare, path: '/chat' },
+    { name: 'Mensajes', icon: MessageSquare, path: '/chat', badge: 0 },
     { name: 'Citas', icon: Calendar, path: '/appointments' },
     ...(isPsychologist ? [
       { name: 'Pacientes', icon: Users, path: '/patients' },
       { name: 'Asistente IA', icon: Sparkles, path: '/ai-assistant' },
     ] : []),
-    { name: 'Perfil', icon: User, path: '/profile' },
   ];
 
   return (
@@ -66,6 +69,21 @@ export function Layout({ children }: LayoutProps) {
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1">
+          {/* Botón para volver al landing */}
+          <button
+            onClick={() => {
+              logout();
+              setLocation('/');
+            }}
+            className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg
+              transition-colors text-left text-gray-700 hover:bg-gray-100"
+          >
+            <Home className="w-5 h-5" />
+            <span className="font-medium">Volver al Inicio</span>
+          </button>
+
+          <div className="border-t border-gray-200 my-2"></div>
+
           {navigation.map((item) => {
             const isActive = location === item.path;
             return (
@@ -73,7 +91,7 @@ export function Layout({ children }: LayoutProps) {
                 key={item.path}
                 onClick={() => setLocation(item.path)}
                 className={`
-                  w-full flex items-center space-x-3 px-4 py-3 rounded-lg
+                  w-full flex items-center justify-between px-4 py-3 rounded-lg
                   transition-colors text-left
                   ${isActive 
                     ? 'bg-black text-white' 
@@ -81,24 +99,78 @@ export function Layout({ children }: LayoutProps) {
                   }
                 `}
               >
-                <item.icon className="w-5 h-5" />
-                <span className="font-medium">{item.name}</span>
+                <div className="flex items-center space-x-3">
+                  <item.icon className="w-5 h-5" />
+                  <span className="font-medium">{item.name}</span>
+                </div>
+                {item.badge !== undefined && item.badge > 0 && (
+                  <Badge 
+                    variant={isActive ? 'default' : 'info'} 
+                    size="sm"
+                    className={isActive ? 'bg-white text-black' : ''}
+                  >
+                    {item.badge}
+                  </Badge>
+                )}
               </button>
             );
           })}
+
+          <div className="border-t border-gray-200 my-2"></div>
+
+          {/* Configuración y Perfil */}
+          <button
+            onClick={() => setLocation('/profile')}
+            className={`
+              w-full flex items-center space-x-3 px-4 py-3 rounded-lg
+              transition-colors text-left
+              ${location === '/profile'
+                ? 'bg-black text-white' 
+                : 'text-gray-700 hover:bg-gray-100'
+              }
+            `}
+          >
+            <User className="w-5 h-5" />
+            <span className="font-medium">Mi Perfil</span>
+          </button>
+
+          {isPsychologist && (
+            <button
+              onClick={() => setLocation('/settings')}
+              className={`
+                w-full flex items-center space-x-3 px-4 py-3 rounded-lg
+                transition-colors text-left
+                ${location === '/settings'
+                  ? 'bg-black text-white' 
+                  : 'text-gray-700 hover:bg-gray-100'
+                }
+              `}
+            >
+              <Settings className="w-5 h-5" />
+              <span className="font-medium">Configuración</span>
+            </button>
+          )}
         </nav>
 
         {/* User Section */}
         <div className="p-4 border-t border-gray-200">
           <div className="flex items-center space-x-3 mb-3">
-            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-              <User className="w-5 h-5 text-gray-600" />
-            </div>
+            <Avatar
+              src={user?.profileImageUrl}
+              fallback={`${user?.firstName} ${user?.lastName}`}
+              size="md"
+            />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-black truncate">
                 {user?.firstName} {user?.lastName}
               </p>
-              <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
+              <Badge 
+                variant="info" 
+                size="sm"
+                className="mt-1"
+              >
+                {user?.role === 'psychologist' ? 'Psicólogo' : 'Paciente'}
+              </Badge>
             </div>
           </div>
           <Button
@@ -108,7 +180,7 @@ export function Layout({ children }: LayoutProps) {
             className="w-full"
           >
             <LogOut className="w-4 h-4 mr-2" />
-            Salir
+            Cerrar Sesión
           </Button>
         </div>
       </aside>
